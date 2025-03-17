@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tic-Tac-Toe 50x50</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="shortcut icon" href="assets/favicon.ico" type="image/x-icon">
+</head>
+<body>
+    <header>
+        <h1>Tic-Tac-Toe 50x50</h1>
+        <p>Connect 5 in a row to win!</p>
+    </header>
+    
+    <main>
+        <div class="game-info">
+            <div class="mode-selector">
+                <button id="two-player-btn" class="mode-btn active">Two Player</button>
+                <button id="ai-btn" class="mode-btn">Play vs AI</button>
+            </div>
+            
+            <div class="status-container">
+                <div id="status" class="status">Player X's turn</div>
+            </div>
+            
+            <div class="controls">
+                <button id="new-game-btn">New Game</button>
+                <button id="reset-btn">Reset Game</button>
+            </div>
+        </div>
+        
+        <div class="board-container">
+            <div class="board-navigation">
+                <div class="zoom-controls">
+                    <button id="zoom-in">+</button>
+                    <button id="zoom-out">-</button>
+                </div>
+                <div class="position-indicator">
+                    <span id="position-text">Position: 0, 0</span>
+                </div>
+            </div>
+            <div class="board-wrapper">
+                <canvas id="board"></canvas>
+            </div>
+        </div>
+        
+        <div class="game-history">
+            <h3>Game History</h3>
+            <ul id="move-history"></ul>
+        </div>
+    </main>
+    
+    <footer>
+        <p>&copy; 2025 Tic-Tac-Toe 50x50</p>
+    </footer>
+    
+    <!-- Scripts -->
+    <script src="js/api.js"></script>
+    <script src="js/board.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
