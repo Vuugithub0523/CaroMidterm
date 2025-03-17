@@ -3,23 +3,21 @@ import sys
 import pygame
 import random
 import numpy as np
-
 from constants import *
 
 # --- PYGAME SETUP ---
-
 pygame.init()
-screen = pygame.display.set_mode( (WIDTH, HEIGHT) )
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption('TIC TAC TOE AI')
-screen.fill( BG_COLOR )
+screen.fill(BG_COLOR)
 
 # --- CLASSES ---
 
 class Board:
 
     def __init__(self):
-        self.squares = np.zeros( (ROWS, COLS) )
-        self.empty_sqrs = self.squares # [squares]
+        self.squares = np.zeros((5, 5))  # 5x5 board
+        self.empty_sqrs = self.squares  # [squares]
         self.marked_sqrs = 0
 
     def final_state(self, show=False):
@@ -30,8 +28,8 @@ class Board:
         '''
 
         # vertical wins
-        for col in range(COLS):
-            if self.squares[0][col] == self.squares[1][col] == self.squares[2][col] != 0:
+        for col in range(5):
+            if self.squares[0][col] == self.squares[1][col] == self.squares[2][col] == self.squares[3][col] == self.squares[4][col] != 0:
                 if show:
                     color = CIRC_COLOR if self.squares[0][col] == 2 else CROSS_COLOR
                     iPos = (col * SQSIZE + SQSIZE // 2, 20)
@@ -40,8 +38,8 @@ class Board:
                 return self.squares[0][col]
 
         # horizontal wins
-        for row in range(ROWS):
-            if self.squares[row][0] == self.squares[row][1] == self.squares[row][2] != 0:
+        for row in range(5):
+            if self.squares[row][0] == self.squares[row][1] == self.squares[row][2] == self.squares[row][3] == self.squares[row][4] != 0:
                 if show:
                     color = CIRC_COLOR if self.squares[row][0] == 2 else CROSS_COLOR
                     iPos = (20, row * SQSIZE + SQSIZE // 2)
@@ -50,7 +48,7 @@ class Board:
                 return self.squares[row][0]
 
         # desc diagonal
-        if self.squares[0][0] == self.squares[1][1] == self.squares[2][2] != 0:
+        if self.squares[0][0] == self.squares[1][1] == self.squares[2][2] == self.squares[3][3] == self.squares[4][4] != 0:
             if show:
                 color = CIRC_COLOR if self.squares[1][1] == 2 else CROSS_COLOR
                 iPos = (20, 20)
@@ -59,7 +57,7 @@ class Board:
             return self.squares[1][1]
 
         # asc diagonal
-        if self.squares[2][0] == self.squares[1][1] == self.squares[0][2] != 0:
+        if self.squares[4][0] == self.squares[3][1] == self.squares[2][2] == self.squares[1][3] == self.squares[0][4] != 0:
             if show:
                 color = CIRC_COLOR if self.squares[1][1] == 2 else CROSS_COLOR
                 iPos = (20, HEIGHT - 20)
@@ -79,15 +77,15 @@ class Board:
 
     def get_empty_sqrs(self):
         empty_sqrs = []
-        for row in range(ROWS):
-            for col in range(COLS):
+        for row in range(5):
+            for col in range(5):
                 if self.empty_sqr(row, col):
-                    empty_sqrs.append( (row, col) )
+                    empty_sqrs.append((row, col))
         
         return empty_sqrs
 
     def isfull(self):
-        return self.marked_sqrs == 9
+        return self.marked_sqrs == 25  # 5x5 = 25 cells
 
     def isempty(self):
         return self.marked_sqrs == 0
@@ -99,64 +97,75 @@ class AI:
         self.player = player
 
     # --- RANDOM ---
-
     def rnd(self, board):
         empty_sqrs = board.get_empty_sqrs()
         idx = random.randrange(0, len(empty_sqrs))
 
-        return empty_sqrs[idx] # (row, col)
+        return empty_sqrs[idx]  # (row, col)
 
     # --- MINIMAX ---
+    def minimax(self, board, maximizing, depth, max_depth=3, alpha=-float('inf'), beta=float('inf')):
 
-    def minimax(self, board, maximizing):
-        
-        # terminal case
+        # Terminal case
         case = board.final_state()
 
-        # player 1 wins
+        # Player 1 wins
         if case == 1:
-            return 1, None # eval, move
+            return 1 + depth, None  # eval, move
 
-        # player 2 wins
+        # Player 2 wins
         if case == 2:
-            return -1, None
+            return -1 + depth, None
 
-        # draw
-        elif board.isfull():
+        # Draw
+        elif board.isfull() or max_depth <= depth:
             return 0, None
 
         if maximizing:
-            max_eval = -100
+            max_eval = -float('inf')
             best_move = None
             empty_sqrs = board.get_empty_sqrs()
 
             for (row, col) in empty_sqrs:
                 temp_board = copy.deepcopy(board)
-                temp_board.mark_sqr(row, col, 1)
-                eval = self.minimax(temp_board, False)[0]
+                temp_board.mark_sqr(row, col, 1)  # AI (player 1) move
+                eval, _ = self.minimax(temp_board, False, depth + 1, max_depth, alpha, beta)  # Recurse with minimizer
+
+                # Maximize eval
                 if eval > max_eval:
                     max_eval = eval
                     best_move = (row, col)
 
+                # Alpha-Beta Pruning
+                alpha = max(alpha, max_eval)
+                if beta <= alpha:
+                    break  # Prune the branch
+
             return max_eval, best_move
 
-        elif not maximizing:
-            min_eval = 100
+        else:
+            min_eval = float('inf')
             best_move = None
             empty_sqrs = board.get_empty_sqrs()
 
             for (row, col) in empty_sqrs:
                 temp_board = copy.deepcopy(board)
-                temp_board.mark_sqr(row, col, self.player)
-                eval = self.minimax(temp_board, True)[0]
+                temp_board.mark_sqr(row, col, self.player)  # Player move (player 2)
+                eval, _ = self.minimax(temp_board, True, depth + 1, max_depth, alpha, beta)  # Recurse with maximizer
+
+                # Minimize eval
                 if eval < min_eval:
                     min_eval = eval
                     best_move = (row, col)
 
+                # Alpha-Beta Pruning
+                beta = min(beta, min_eval)
+                if beta <= alpha:
+                    break  # Prune the branch
+
             return min_eval, best_move
 
     # --- MAIN EVAL ---
-
     def eval(self, main_board):
         if self.level == 0:
             # random choice
@@ -164,55 +173,51 @@ class AI:
             move = self.rnd(main_board)
         else:
             # minimax algo choice
-            eval, move = self.minimax(main_board, False)
+            eval, move = self.minimax(main_board, False, depth=0)
 
         print(f'AI has chosen to mark the square in pos {move} with an eval of: {eval}')
 
-        return move # row, col
+        return move  # row, col
 
 class Game:
 
     def __init__(self):
         self.board = Board()
         self.ai = AI()
-        self.player = 1   #1-cross  #2-circles
-        self.gamemode = 'ai' # pvp or ai
+        self.player = 1   # 1-cross  # 2-circles
+        self.gamemode = 'ai'  # pvp or ai
         self.running = True
         self.show_lines()
 
     # --- DRAW METHODS ---
-
     def show_lines(self):
-        # bg
-        screen.fill( BG_COLOR )
-
-        # vertical
-        pygame.draw.line(screen, LINE_COLOR, (SQSIZE, 0), (SQSIZE, HEIGHT), LINE_WIDTH)
-        pygame.draw.line(screen, LINE_COLOR, (WIDTH - SQSIZE, 0), (WIDTH - SQSIZE, HEIGHT), LINE_WIDTH)
-
-        # horizontal
-        pygame.draw.line(screen, LINE_COLOR, (0, SQSIZE), (WIDTH, SQSIZE), LINE_WIDTH)
-        pygame.draw.line(screen, LINE_COLOR, (0, HEIGHT - SQSIZE), (WIDTH, HEIGHT - SQSIZE), LINE_WIDTH)
+        screen.fill(BG_COLOR)
+        # Draw vertical lines
+        for i in range(1, 5):  # for a 5x5 grid, 4 vertical lines
+            pygame.draw.line(screen, LINE_COLOR, (i * SQSIZE, 0), (i * SQSIZE, HEIGHT), LINE_WIDTH)
+        # Draw horizontal lines
+        for i in range(1, 5):  # for a 5x5 grid, 4 horizontal lines
+            pygame.draw.line(screen, LINE_COLOR, (0, i * SQSIZE), (WIDTH, i * SQSIZE), LINE_WIDTH)
 
     def draw_fig(self, row, col):
         if self.player == 1:
-            # draw cross
-            # desc line
+            # draw cross (X)
+            # draw diagonal lines for 'X'
             start_desc = (col * SQSIZE + OFFSET, row * SQSIZE + OFFSET)
             end_desc = (col * SQSIZE + SQSIZE - OFFSET, row * SQSIZE + SQSIZE - OFFSET)
             pygame.draw.line(screen, CROSS_COLOR, start_desc, end_desc, CROSS_WIDTH)
-            # asc line
+            
             start_asc = (col * SQSIZE + OFFSET, row * SQSIZE + SQSIZE - OFFSET)
             end_asc = (col * SQSIZE + SQSIZE - OFFSET, row * SQSIZE + OFFSET)
             pygame.draw.line(screen, CROSS_COLOR, start_asc, end_asc, CROSS_WIDTH)
-        
+
         elif self.player == 2:
-            # draw circle
+            # draw circle (O)
             center = (col * SQSIZE + SQSIZE // 2, row * SQSIZE + SQSIZE // 2)
             pygame.draw.circle(screen, CIRC_COLOR, center, RADIUS, CIRC_WIDTH)
 
-    # --- OTHER METHODS ---
 
+    # --- OTHER METHODS ---
     def make_move(self, row, col):
         self.board.mark_sqr(row, col, self.player)
         self.draw_fig(row, col)
@@ -231,17 +236,14 @@ class Game:
         self.__init__()
 
 def main():
-
     # --- OBJECTS ---
-
     game = Game()
     board = game.board
     ai = game.ai
 
     # --- MAINLOOP ---
-
     while True:
-        
+
         # pygame events
         for event in pygame.event.get():
 
@@ -253,51 +255,40 @@ def main():
             # keydown event
             if event.type == pygame.KEYDOWN:
 
-                # g-gamemode
+                # g-gamemode toggle
                 if event.key == pygame.K_g:
                     game.change_gamemode()
 
-                # r-restart
+                # r-restart the game
                 if event.key == pygame.K_r:
                     game.reset()
-                    board = game.board
-                    ai = game.ai
 
-                # 0-random ai
+                # Change AI difficulty
                 if event.key == pygame.K_0:
                     ai.level = 0
-                
-                # 1-random ai
-                if event.key == pygame.K_1:
+                elif event.key == pygame.K_1:
                     ai.level = 1
 
-            # click event
+            # click event to make a move
             if event.type == pygame.MOUSEBUTTONDOWN:
                 pos = event.pos
-                row = pos[1] // SQSIZE
-                col = pos[0] // SQSIZE
-                
-                # human mark sqr
+                row, col = pos[1] // SQSIZE, pos[0] // SQSIZE
+
                 if board.empty_sqr(row, col) and game.running:
                     game.make_move(row, col)
 
                     if game.isover():
                         game.running = False
 
-
-        # AI initial call
+        # AI turn
         if game.gamemode == 'ai' and game.player == ai.player and game.running:
-
-            # update the screen
             pygame.display.update()
-
-            # eval
             row, col = ai.eval(board)
             game.make_move(row, col)
 
             if game.isover():
                 game.running = False
-            
+
         pygame.display.update()
 
 main()
