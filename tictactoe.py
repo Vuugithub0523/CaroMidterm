@@ -3,7 +3,12 @@ import sys
 import pygame
 import random
 import numpy as np
+import subprocess  # Import subprocess module
 from constants import *
+from menuGame import create_menu_window 
+# Function to run menuGame.py
+def run_menu_game():
+    subprocess.run(["python", "d:/Documents/Python/Python-Project/TicTacToe/python-tictactoe-ai-yt/menuGame.py"])
 
 # --- PYGAME SETUP ---
 pygame.init()
@@ -89,9 +94,7 @@ class Board:
 
     def isempty(self):
         return self.marked_sqrs == 0
-
 class AI:
-
     def __init__(self, level=1, player=2):
         self.level = level
         self.player = player
@@ -100,87 +103,77 @@ class AI:
     def rnd(self, board):
         empty_sqrs = board.get_empty_sqrs()
         idx = random.randrange(0, len(empty_sqrs))
-
         return empty_sqrs[idx]  # (row, col)
 
     # --- MINIMAX ---
-    def minimax(self, board, maximizing, depth, max_depth=3, alpha=-float('inf'), beta=float('inf')):
-
+    def minimax(self, board, maximizing, depth, max_depth=1, alpha=-float('inf'), beta=float('inf')):
         # Terminal case
         case = board.final_state()
 
-        # Player 1 wins
-        if case == 1:
-            return 1 + depth, None  # eval, move
+        if case == 1:  # Player 1 (AI) wins
+            return 1 + depth, None
 
-        # Player 2 wins
-        if case == 2:
+        if case == 2:  # Player 2 (human) wins
             return -1 + depth, None
 
-        # Draw
-        elif board.isfull() or max_depth <= depth:
+        if board.isfull() or max_depth <= depth:  # Draw or max depth reached
+            
             return 0, None
+
+        empty_sqrs = board.get_empty_sqrs()
 
         if maximizing:
             max_eval = -float('inf')
             best_move = None
-            empty_sqrs = board.get_empty_sqrs()
 
             for (row, col) in empty_sqrs:
                 temp_board = copy.deepcopy(board)
                 temp_board.mark_sqr(row, col, 1)  # AI (player 1) move
-                eval, _ = self.minimax(temp_board, False, depth + 1, max_depth, alpha, beta)  # Recurse with minimizer
+                eval, _ = self.minimax(temp_board, False, depth + 1, max_depth, alpha, beta)  # Minimize
 
-                # Maximize eval
                 if eval > max_eval:
                     max_eval = eval
                     best_move = (row, col)
 
-                # Alpha-Beta Pruning
                 alpha = max(alpha, max_eval)
                 if beta <= alpha:
-                    break  # Prune the branch
+                    break  # Prune branch
 
             return max_eval, best_move
 
         else:
             min_eval = float('inf')
             best_move = None
-            empty_sqrs = board.get_empty_sqrs()
 
             for (row, col) in empty_sqrs:
                 temp_board = copy.deepcopy(board)
-                temp_board.mark_sqr(row, col, self.player)  # Player move (player 2)
-                eval, _ = self.minimax(temp_board, True, depth + 1, max_depth, alpha, beta)  # Recurse with maximizer
+                temp_board.mark_sqr(row, col, self.player)  # Player (human) move
+                eval, _ = self.minimax(temp_board, True, depth + 1, max_depth, alpha, beta)  # Maximize
 
-                # Minimize eval
                 if eval < min_eval:
                     min_eval = eval
                     best_move = (row, col)
 
-                # Alpha-Beta Pruning
                 beta = min(beta, min_eval)
                 if beta <= alpha:
-                    break  # Prune the branch
+                    break  # Prune branch
 
             return min_eval, best_move
 
     # --- MAIN EVAL ---
-    def eval(self, main_board):
+    def eval(self, main_board, max_depth):
         if self.level == 0:
             # random choice
             eval = 'random'
             move = self.rnd(main_board)
         else:
             # minimax algo choice
-            eval, move = self.minimax(main_board, False, depth=0)
+            eval, move = self.minimax(main_board, False, depth=0, max_depth=max_depth)
 
         print(f'AI has chosen to mark the square in pos {move} with an eval of: {eval}')
-
         return move  # row, col
 
 class Game:
-
     def __init__(self):
         self.board = Board()
         self.ai = AI()
@@ -188,6 +181,8 @@ class Game:
         self.gamemode = 'ai'  # pvp or ai
         self.running = True
         self.show_lines()
+        self.turn_count = 0  # Tổng số lượt chơi
+        self.player_moves = 0  # Số lượt đi của người chơi
 
     # --- DRAW METHODS ---
     def show_lines(self):
@@ -202,7 +197,6 @@ class Game:
     def draw_fig(self, row, col):
         if self.player == 1:
             # draw cross (X)
-            # draw diagonal lines for 'X'
             start_desc = (col * SQSIZE + OFFSET, row * SQSIZE + OFFSET)
             end_desc = (col * SQSIZE + SQSIZE - OFFSET, row * SQSIZE + SQSIZE - OFFSET)
             pygame.draw.line(screen, CROSS_COLOR, start_desc, end_desc, CROSS_WIDTH)
@@ -216,7 +210,6 @@ class Game:
             center = (col * SQSIZE + SQSIZE // 2, row * SQSIZE + SQSIZE // 2)
             pygame.draw.circle(screen, CIRC_COLOR, center, RADIUS, CIRC_WIDTH)
 
-
     # --- OTHER METHODS ---
     def make_move(self, row, col):
         self.board.mark_sqr(row, col, self.player)
@@ -225,9 +218,12 @@ class Game:
 
     def next_turn(self):
         self.player = self.player % 2 + 1
+        self.turn_count += 1  # Tổng số lượt chơi
+        if self.player == 1:  # Nếu lượt đi của người chơi
+            self.player_moves += 1  # Tăng số lượt đi của người chơi
 
-    def change_gamemode(self):
-        self.gamemode = 'ai' if self.gamemode == 'pvp' else 'pvp'
+    def change_gamemode(self, gamemode):
+        self.gamemode = gamemode
 
     def isover(self):
         return self.board.final_state(show=True) != 0 or self.board.isfull()
@@ -241,6 +237,7 @@ def main():
     board = game.board
     ai = game.ai
 
+    create_menu_window(game)
     # --- MAINLOOP ---
     while True:
 
@@ -255,9 +252,6 @@ def main():
             # keydown event
             if event.type == pygame.KEYDOWN:
 
-                # g-gamemode toggle
-                if event.key == pygame.K_g:
-                    game.change_gamemode()
 
                 # r-restart the game
                 if event.key == pygame.K_r:
@@ -283,7 +277,12 @@ def main():
         # AI turn
         if game.gamemode == 'ai' and game.player == ai.player and game.running:
             pygame.display.update()
-            row, col = ai.eval(board)
+
+            # Cập nhật max_depth cho AI sau mỗi 2 lượt đi của người chơi
+            max_depth = 4 + (game.player_moves // 2)
+
+            print("max_depth: ", max_depth)
+            row, col = ai.eval(board, max_depth)
             game.make_move(row, col)
 
             if game.isover():
